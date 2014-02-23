@@ -367,23 +367,11 @@ def update_TR_method(self, context):
     
     
     #keyframe it to make a 45 degree straight line
+    fcurve.extrapolation='LINEAR'
     fcurve.keyframe_points.insert( frame=0.0, value=0.0 )
     fcurve.keyframe_points.insert( frame=1.0, value=1.0 )    
-    fcurve.extrapolation='LINEAR' 
-    #now because of a possible bug, I have to use this workaround
-    refresh_fcurve_editor()
-
-
-def refresh_fcurve_editor():
-    '''execute a meaningless command on F-Curve Editor which has the effect of
-    refreshing the graph.  I think it's a bug that necessitates using this.
-    see: bit.ly/1hGAT0I'''
-    C=bpy.context
-    old_area_type = C.area.type
-    C.area.type='GRAPH_EDITOR'
-    bpy.ops.graph.clean( threshold = 0)
-    C.area.type=old_area_type    
-    
+     
+     
 
     
 def register():
