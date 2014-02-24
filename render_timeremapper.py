@@ -33,9 +33,6 @@ import bpy
 import os
 import signal
 
-##TODO: figure out how to initialize the addon. 
-#TODO: initialize fcurve using Pink Vertex answer here: http://blender.stackexchange.com/questions/7123/add-keyframe-to-a-scene-property
-#and also fcurve.extrapolation='LINEAR'
 
 def get_TR_frames_from_SF(context):
     '''Gets a list of time-remapped frames to be rendered by
@@ -121,16 +118,12 @@ class OBJECT_OT_render_TR(bpy.types.Operator):
     
     #this is only used during rendering frames
     abort_render = bpy.props.BoolProperty(default=False)
-    
-    
-
-    
+ 
     
     def SIGINT_handler(self, signum, frame):
         '''This signal handler will be called when user hits CTL+C
         while rendering'''
         self.abort_render = True
-    
         
     
     def execute(self, context):
@@ -149,7 +142,6 @@ class OBJECT_OT_render_TR(bpy.types.Operator):
                                 "you must select an image format"
                                 "\n(Current file format: {})"
                                 .format(file_format))
-                        
         
         
         print("Getting list of frames to be rendered (should take < 1s)")
@@ -167,7 +159,6 @@ class OBJECT_OT_render_TR(bpy.types.Operator):
         print("\n\nRendering " + str(total_num_fr) +\
                 " frames now ... to stop after rendering current frame,"
                 "press CTL+C...\n\n")
-        
         
         
         #store original render path
@@ -250,7 +241,6 @@ class OBJECT_OT_render_TR(bpy.types.Operator):
         
         #End loop that renders frames
          
-         
             
         #reset the filepath in case user wants to play movie afterwards
         scene.render.filepath = orig_render_path
@@ -324,7 +314,8 @@ def draw(self, context):
                     text="TR Playback", 
                     icon='PLAY')
     rowsub.prop(scene, 'timeremap_trueframelabels')
-     
+ 
+    
      
 def is_keyframed(scene, prop):
     '''Check if the scene property is already keyframed
@@ -363,15 +354,12 @@ def update_TR_method(self, context):
     
  
     #find the correct f-curve in case there's multiple        
-    fcurve = scene.animation_data.action.fcurves.new('timeremap_TTC')    
-    
-    
+    fcurve = scene.animation_data.action.fcurves.new('timeremap_TTC')       
     #keyframe it to make a 45 degree straight line
     fcurve.extrapolation='LINEAR'
     fcurve.keyframe_points.insert( frame=0.0, value=0.0 )
     fcurve.keyframe_points.insert( frame=1.0, value=1.0 )    
-     
-     
+          
 
     
 def register():
