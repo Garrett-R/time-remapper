@@ -31,7 +31,7 @@ bl_info = {
 
 
 import bpy
-import os
+from os import path, remove
 import signal
 
 
@@ -48,9 +48,9 @@ def get_TR_frames_from_SF(context):
     current_TR_frame = scene.frame_start
 
     #for unkeyframed, we can't use the F-Curve, so we treat it separately
-    if is_keyframed(scene, 'timeremap_speedfactor') == False:
+    if is_keyframed(scene, 'timeremap_speedfactor') is False:
         
-        #avoid infinite loop by checing that speed factor's positive            
+        #avoid infinite loop by checing that speed factor's positive
         if scene.timeremap_speedfactor <= 0:
             raise RuntimeError(
                     "\n\nYou're speed factor must always be positive"
@@ -62,76 +62,75 @@ def get_TR_frames_from_SF(context):
             current_TR_frame += scene.timeremap_speedfactor
         
         return TR_frames
-    #end of if block            
-        
-
-    #speed factor's F-Curve
-    SF_fcurve = find_fcurve(scene, 'timeremap_speedfactor')    
-    assert SF_fcurve is not None    
+    #end of if block
     
-    #we loop through however many (time-remapped) frames it takes 
+    #speed factor's F-Curve
+    SF_fcurve = find_fcurve(scene, 'timeremap_speedfactor')
+    assert SF_fcurve is not None
+    
+    #we loop through however many (time-remapped) frames it takes
     #to get to the end frame
-    while current_TR_frame <= scene.frame_end:         
+    while current_TR_frame <= scene.frame_end:
         
         #add current frame to our list
         TR_frames.append(current_TR_frame)
 
         #get current speed factor
-        current_SF = SF_fcurve.evaluate(current_TR_frame)       
+        current_SF = SF_fcurve.evaluate(current_TR_frame)
         
-        #avoid infinite loop by checing that speed factor's positive            
+        #avoid infinite loop by checing that speed factor's positive
         if current_SF <= 0:
             raise RuntimeError(
-                    "\n\nYou're speed factor must always be positive" 
+                    "\n\nYou're speed factor must always be positive"
                     " to avoid getting stuck in an infinite loop!")
         
         #move to next frame based on the current value of the speed factor
-        current_TR_frame += current_SF  
+        current_TR_frame += current_SF
     #end while loop
     
-    return TR_frames    
+    return TR_frames
 #end of get_TR_frames_from_SF(.)
 
 
 def get_TR_frames_from_TTC(context):
-    '''Gets a list of time-remapped frames to be rendered by 
+    '''Gets a list of time-remapped frames to be rendered by
     looking at the Speed Factor parameter.'''
     
     scene = context.scene
     
-    if is_keyframed(scene, 'timeremap_TTC') == False:
+    if is_keyframed(scene, 'timeremap_TTC') is False:
         raise RuntimeError('the property timeremap_TTC must be keyframed'
                             '\nIt cannot be a constant value.')
     
     #Time-remapped frames to render
-    TR_frames=[]
+    TR_frames = []
     #jump to non-time-remapped start frame
     nonTR_frame = scene.frame_start
     scene.frame_set(nonTR_frame)
 
     #to avoid getting stuck in an infinite loop (ex: TT curve never reaches the
     #end frame), we break when we exceed max_frames.
-    count=0
-    max_frames=100000
+    count = 0
+    max_frames = 100000
 
     #TTC's F-Curve
-    TTC_fcurve = find_fcurve(scene, 'timeremap_TTC')    
+    TTC_fcurve = find_fcurve(scene, 'timeremap_TTC')
     assert TTC_fcurve is not None
 
     current_TTC_value = TTC_fcurve.evaluate(nonTR_frame)
 
-    #we loop through however many (time-remapped) frames 
+    #we loop through however many (time-remapped) frames
     #it takes to get to the end frame
     while current_TTC_value <= scene.frame_end:
         
         TR_frames.append(current_TTC_value)
         
-        nonTR_frame += 1   
+        nonTR_frame += 1
         current_TTC_value = TTC_fcurve.evaluate(nonTR_frame)
         
-        count+=1
-        if count>=max_frames:
-            raise RuntimeError("\n\nHaven't reached end after counting 100 000" 
+        count += 1
+        if count >= max_frames:
+            raise RuntimeError("\n\nHaven't reached end after counting 100 000"
                                 "frames!\nMake sure the TT Curve value reaches"
                                 " the end frame at some point.")
     #end of while loop
@@ -140,28 +139,25 @@ def get_TR_frames_from_TTC(context):
 #end of get_TR_frames_from_TTC(.)
 
 
-
 class OBJECT_OT_render_TR(bpy.types.Operator):
-    bl_idname='render.render_timeremapper'
-    bl_label="Render using Time Remapper"
-    bl_description= "This renders out frames based on your time remapping"
+    bl_idname = 'render.render_timeremapper'
+    bl_label = "Render using Time Remapper"
+    bl_description = "This renders out frames based on your time remapping"
     bl_register = True
     
     #this is only used during rendering frames
     abort_render = bpy.props.BoolProperty(default=False)
- 
     
     def SIGINT_handler(self, signum, frame):
         '''This signal handler will be called when user hits CTL+C
         while rendering'''
         self.abort_render = True
-        
     
     def execute(self, context):
         
         scene = context.scene
         
-        #ensure they are using Cycles. 
+        #ensure they are using Cycles.
         #Comment this out if you want to try it with Blender Render...
         if scene.render.engine != 'CYCLES':
             raise RuntimeError("\n\nYou must be using Cycles Render "
@@ -174,7 +170,6 @@ class OBJECT_OT_render_TR(bpy.types.Operator):
                                 "\n(Current file format: {})"
                                 .format(file_format))
         
-        
         print("Getting list of frames to be rendered "
                 "(should take <1 second...)")
         if scene.timeremap_method == 'SF':
@@ -183,31 +178,29 @@ class OBJECT_OT_render_TR(bpy.types.Operator):
             TR_frames = get_TR_frames_from_TTC(context)
         else:
             assert False
-        
-        
+       
         #total number of frames
         total_num_fr = len(TR_frames)
         
-        print("\n\nRendering " + str(total_num_fr) +\
+        print("\n\nRendering " + str(total_num_fr) +
                 " frames now ... to stop after rendering current frame,"
                 "press CTL+C...\n\n")
-        
         
         #store original render path
         orig_render_path = scene.render.filepath
         
         #keep a count for labelling the filenames
-        count=0
+        count = 0
         
         first_frame = scene.frame_start
 
         #before starting loop, set up a signal handler for CTL+C
         #since KeyboardInterrupt doesn't work while rendering
         #(see bit.ly/1cfBmlS)
-        self.abort_render=False
+        self.abort_render = False
         signal.signal(signal.SIGINT, self.SIGINT_handler)
                 
-        #start loop that renders the frames. 
+        #start loop that renders the frames.
         #(anim_frame is the actual frame in animation we're at, ex: 4.5435)
         for anim_frame in TR_frames:
             
@@ -215,15 +208,14 @@ class OBJECT_OT_render_TR(bpy.types.Operator):
         
             #check for frame step and skip frame if necessary
             if count % scene.frame_step != 0:
-                print("Stepping over frame " +str(first_frame+count) + 
-                        ". (Frame Step is " + str(scene.frame_step) +")" )
-                count+=1
+                print("Stepping over frame " + str(first_frame+count) +
+                        ". (Frame Step is " + str(scene.frame_step) + ")")
+                count += 1
                 continue
           
-            
             #Jump to animation frame (frame is a float)
-            scene.frame_set(int(anim_frame), anim_frame%1)
-            #create filename.  
+            scene.frame_set(int(anim_frame), anim_frame % 1)
+            #create filename.
             #Note that Blender expects a four digit integer at the end.
             if scene.timeremap_trueframelabels:
                 current_renderpath = orig_render_path + \
@@ -232,72 +224,67 @@ class OBJECT_OT_render_TR(bpy.types.Operator):
             else:
                 current_renderpath = orig_render_path + \
                                         str(first_frame+count).zfill(4)
-                
                
-            #check if file exists, and if so whether we should overwrite it   
-            #first we get the full current path to image to be rendered by 
+            #check if file exists, and if so whether we should overwrite it
+            #first we get the full current path to image to be rendered by
             #adding the extension if File Extensions is enabled.
             full_current_renderpath = bpy.path.abspath(current_renderpath) + \
                                       scene.render.file_extension * \
-                                      (scene.render.use_file_extension==True)
-            if os.path.exists(full_current_renderpath):
-                if scene.render.use_overwrite == False:
-                    print("Skipping frame " + str(first_frame+count) + \
-                            " because there already exists the file: " + \
+                                      (scene.render.use_file_extension is True)
+            if path.exists(full_current_renderpath):
+                if scene.render.use_overwrite is False:
+                    print("Skipping frame " + str(first_frame+count) +
+                            " because there already exists the file: " +
                             full_current_renderpath)
-                    count+=1
+                    count += 1
                     continue
                 else:
-                    print("File: " + full_current_renderpath + \
+                    print("File: " + full_current_renderpath +
                             " will be overwritten.")
                     #Wait to overwrite it until last possible moment.
             
-            
             #check if we need Placeholders
-            if scene.render.use_placeholder == True:
+            if scene.render.use_placeholder is True:
                 #delete the old file if it exists
-                if os.path.exists(full_current_renderpath):
-                    os.remove(full_current_renderpath)
+                if path.exists(full_current_renderpath):
+                    remove(full_current_renderpath)
                 #create placeholder  (tag 'a' helps prevent race errors)
                 open(full_current_renderpath, 'a').close()
-                    
             
             scene.render.filepath = current_renderpath
-            print("Rendering true frame:",anim_frame)
+            print("Rendering true frame:", anim_frame)
             bpy.ops.render.render(write_still=True)
-            print("Finished frame: " + str(count+1) + "/" + \
+            print("Finished frame: " + str(count+1) + "/" +
                     str(total_num_fr) + "\n\n")
-            count+=1
+            count += 1
             #Check if CTL+C was pressed by user
-            if self.abort_render == True:
+            if self.abort_render:
                 print("\nAborting Animation")
                 #reset the SIGINT handler back to default
                 signal.signal(signal.SIGINT, signal.default_int_handler)
                 break
-        
         #End loop that renders frames
-         
             
         #reset the filepath in case user wants to play movie afterwards
         scene.render.filepath = orig_render_path
         
         print("\n\nDone")
         
-        return {'FINISHED'}        
+        return {'FINISHED'}
     #end of execute(.)
 #end of class OBJECT_OT_render_TR
 
 
 class OBJECT_OT_playback_TR(bpy.types.Operator):
-    bl_idname='render.playback_timeremapper'
-    bl_label="Playback time remapped frames"
-    bl_description= "Plays back frames, defining the start and end" \
+    bl_idname = 'render.playback_timeremapper'
+    bl_label = "Playback time remapped frames"
+    bl_description = "Plays back frames, defining the start and end" \
                         " based on the time remapping"
     bl_register = True
 
     def execute(self, context):
         
-        scene = context.scene        
+        scene = context.scene
         
         print("Preparing playback")
         #get number of frames that we need to play back
@@ -306,11 +293,11 @@ class OBJECT_OT_playback_TR(bpy.types.Operator):
         elif scene.timeremap_method == 'TTC':
             num_frames = len(get_TR_frames_from_TTC(context))
         else:
-            assert False        
+            assert False
         
         old_frame_end = scene.frame_end
         
-        scene.frame_end = scene.frame_start + num_frames -1
+        scene.frame_end = scene.frame_start + num_frames - 1
         
         bpy.ops.render.play_rendered_anim()
 
@@ -322,7 +309,7 @@ class OBJECT_OT_playback_TR(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         return not context.scene.timeremap_trueframelabels
-#end of class OBJECT_OT_playback_TR       
+#end of class OBJECT_OT_playback_TR
 
 
 def draw(self, context):
@@ -330,7 +317,7 @@ def draw(self, context):
 
     scene = context.scene
 
-    layout.label("Time Remapper:")    
+    layout.label("Time Remapper:")
     
     row = layout.row(align=True)
     row.alignment = 'LEFT'
@@ -342,11 +329,11 @@ def draw(self, context):
     
     row = layout.row(align=True)
     rowsub = row.row(align=True)
-    rowsub.operator('render.render_timeremapper', 
-                    text="TR Animation", 
-                    icon="RENDER_ANIMATION")        
-    rowsub.operator('render.playback_timeremapper', 
-                    text="TR Playback", 
+    rowsub.operator('render.render_timeremapper',
+                    text="TR Animation",
+                    icon="RENDER_ANIMATION")
+    rowsub.operator('render.playback_timeremapper',
+                    text="TR Playback",
                     icon='PLAY')
     rowsub.prop(scene, 'timeremap_trueframelabels')
  
@@ -363,7 +350,7 @@ def is_keyframed(scene, prop):
     '''Check if the scene property is already keyframed
     Ideas from @CoDEmanX on Blender SE for this.'''
 
-    anim = scene.animation_data    
+    anim = scene.animation_data
     
     if anim is not None and anim.action is not None:
         for fcurve in anim.action.fcurves:
@@ -372,15 +359,14 @@ def is_keyframed(scene, prop):
     return False
         
     
-
 def update_TR_method(self, context):
-    '''Check if user switched to using a TT curve.  If so, and it is not 
-    keyframed, then keyframe it to produce a 45 degree angle curve (which 
+    '''Check if user switched to using a TT curve.  If so, and it is not
+    keyframed, then keyframe it to produce a 45 degree angle curve (which
     corresponds to a one-to-one time mapping)
     
     Ideas from @pinkvertex on Blender SE.'''
 
-    scene = context.scene   
+    scene = context.scene
     
     print('Inside update method')
     
@@ -395,21 +381,19 @@ def update_TR_method(self, context):
         scene.animation_data.action = (bpy.data.actions
                                                 .new('timeremap_TTC_action'))
     
- 
-    #find the correct f-curve in case there's multiple        
-    fcurve = scene.animation_data.action.fcurves.new('timeremap_TTC')       
+    #find the correct f-curve in case there's multiple
+    fcurve = scene.animation_data.action.fcurves.new('timeremap_TTC')
     #keyframe it to make a 45 degree straight line
-    fcurve.extrapolation='LINEAR'
+    fcurve.extrapolation = 'LINEAR'
     fcurve.keyframe_points.insert(frame=0.0, value=0.0)
-    fcurve.keyframe_points.insert(frame=1.0, value=1.0)    
+    fcurve.keyframe_points.insert(frame=1.0, value=1.0)
           
 
-    
 def register():
     bpy.utils.register_module(__name__)
     
     bpy.types.Scene.timeremap_speedfactor = bpy.props.FloatProperty(
-                    name="Speed factor", 
+                    name="Speed factor",
                     options={'ANIMATABLE'},
                     default=1.0)
     bpy.types.Scene.timeremap_TTC = bpy.props.FloatProperty(
@@ -417,7 +401,7 @@ def register():
                     options={'ANIMATABLE'},
                     default=0.0)
     bpy.types.Scene.timeremap_trueframelabels = bpy.props.BoolProperty(
-                    name="Frame labels", 
+                    name="Frame labels",
                     description="Include true frames in filenames"
                                 " (Ex: '23.42_0025.png')  "
                                 "Enabling this precludes the use of Playback",
@@ -426,21 +410,21 @@ def register():
                     name="",
                     description="Method for defining the time remapping",
                     items=[
-                            ('SF','Speed Factor','Use a speed factor'
+                            ('SF', 'Speed Factor', 'Use a speed factor'
                                               '(where 0.5 means 2x slow-mo)'),
-                           ('TTC', 'Time-Time Curve', 
+                           ('TTC', 'Time-Time Curve',
                            'Use a curve which shows how rendered frame maps'
                                               'to true-time frame')
                            ],
                     default='SF', update=update_TR_method)
 
-    #Draw panel under the header "Render" in Render tab of Properties window    
+    #Draw panel under the header "Render" in Render tab of Properties window
     bpy.types.RENDER_PT_render.append(draw)
 
 
-def unregister():    
+def unregister():
     
-    del bpy.types.Scene.timeremap_speedfactor    
+    del bpy.types.Scene.timeremap_speedfactor
     del bpy.types.Scene.timeremap_TTC
     del bpy.types.Scene.timeremap_trueframelabels
     del bpy.types.Scene.timeremap_method
@@ -449,7 +433,6 @@ def unregister():
     bpy.types.RENDER_PT_render.remove(draw)
     
     bpy.utils.unregister_module(__name__)
-
 
 
 if __name__ == "__main__":
