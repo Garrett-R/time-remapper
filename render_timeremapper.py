@@ -107,44 +107,7 @@ class OBJECT_OT_render_TR(bpy.types.Operator):
                 continue
 
             #render frame, ie. the number we assign this frame
-            render_frame = first_frame + count
-            #Jump to animation frame (frame is a float)
-            scene.frame_set(int(anim_frame), anim_frame % 1)
-            #create filename.
-            #Note that Blender expects a four digit integer at the end.
-            if scene.timeremap_trueframelabels:
-                current_renderpath = orig_render_path + \
-                                    '{x:.2f}_'.format(x=anim_frame) + \
-                                    str(render_frame).zfill(4)
-            else:
-                current_renderpath = orig_render_path + \
-                                        str(render_frame).zfill(4)
-               
-            #check if file exists, and if so whether we should overwrite it
-            #first we get the full current path to image to be rendered by
-            #adding the extension if File Extensions is enabled.
-            full_current_renderpath = bpy.path.abspath(current_renderpath) + \
-                                      scene.render.file_extension * \
-                                      (scene.render.use_file_extension is True)
-            if path.exists(full_current_renderpath):
-                if scene.render.use_overwrite is False:
-                    print("Skipping frame " + str(first_frame+count) +
-                            " because there already exists the file: " +
-                            full_current_renderpath)
-                    count += 1
-                    continue
-                else:
-                    print("File: " + full_current_renderpath +
-                            " will be overwritten.")
-                    #Wait to overwrite it until last possible moment.
-            
-            #check if we need Placeholders
-            if scene.render.use_placeholder is True:
-                #delete the old file if it exists
-                if path.exists(full_current_renderpath):
-                    remove(full_current_renderpath)
-                #create placeholder  (tag 'a' helps prevent race errors)
-                open(full_current_renderpath, 'a').close()
+            render_frame = first_frame + count            
             
             #################################
             ## Dealing with Immune Objects ##
@@ -180,17 +143,55 @@ class OBJECT_OT_render_TR(bpy.types.Operator):
                         keyframe_locrot_by_target_frame(iobj, render_frame,
                                                         anim_frame)
                         immuneObjects.append(iobj)
-                        
-                scene.frame_set(int(anim_frame), anim_frame % 1)
 
             ########################################
             ## End of Dealing with Immune Objects ##
             ########################################
             
+            #create filename.
+            #Note that Blender expects a four digit integer at the end.
+            if scene.timeremap_trueframelabels:
+                current_renderpath = orig_render_path + \
+                                    '{x:.2f}_'.format(x=anim_frame) + \
+                                    str(render_frame).zfill(4)
+            else:
+                current_renderpath = orig_render_path + \
+                                        str(render_frame).zfill(4)
+               
+            #check if file exists, and if so whether we should overwrite it
+            #first we get the full current path to image to be rendered by
+            #adding the extension if File Extensions is enabled.
+            full_current_renderpath = bpy.path.abspath(current_renderpath) + \
+                                      scene.render.file_extension * \
+                                      (scene.render.use_file_extension is True)
+            if path.exists(full_current_renderpath):
+                if scene.render.use_overwrite is False:
+                    print("Skipping frame " + str(render_frame) +
+                            " because there already exists the file: " +
+                            full_current_renderpath)
+                    count += 1
+                    continue
+                else:
+                    print("File: " + full_current_renderpath +
+                            " will be overwritten.")
+                    #Wait to overwrite it until last possible moment.
+            
+            #check if we need Placeholders
+            if scene.render.use_placeholder is True:
+                #delete the old file if it exists
+                if path.exists(full_current_renderpath):
+                    remove(full_current_renderpath)
+                #create placeholder  (tag 'a' helps prevent race errors)
+                open(full_current_renderpath, 'a').close()
+    
+            #Jump to animation frame (frame is a float)        
+            scene.frame_set(int(anim_frame), anim_frame % 1)
+        
             scene.render.filepath = current_renderpath
             print("Rendering true frame:", anim_frame)
+            #Render frame
             bpy.ops.render.render(write_still=True)
-            print("Finished frame: " + str(count+1) + "/" +
+            print("Frames completed: " + str(count+1) + "/" +
                     str(total_num_fr) + "\n\n")
             count += 1
 
