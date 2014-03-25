@@ -150,13 +150,7 @@ class OBJECT_OT_render_TR(bpy.types.Operator):
             
             #create filename.
             #Note that Blender expects a four digit integer at the end.
-            if scene.timeremap_trueframelabels:
-                current_renderpath = orig_render_path + \
-                                    '{x:.2f}_'.format(x=anim_frame) + \
-                                    str(render_frame).zfill(4)
-            else:
-                current_renderpath = orig_render_path + \
-                                        str(render_frame).zfill(4)
+            current_renderpath = orig_render_path + str(render_frame).zfill(4)
                
             #check if file exists, and if so whether we should overwrite it
             #first we get the full current path to image to be rendered by
@@ -242,10 +236,7 @@ class OBJECT_OT_playback_TR(bpy.types.Operator):
         scene.frame_end = old_frame_end
         
         return {'FINISHED'}
-    
-    @classmethod
-    def poll(cls, context):
-        return not context.scene.timeremap_trueframelabels
+
 #end of class OBJECT_OT_playback_TR
 
     
@@ -272,7 +263,6 @@ def draw(self, context):
     rowsub.operator('render.playback_timeremapper',
                     text="TR Playback",
                     icon='PLAY')
-    rowsub.prop(scene, 'timeremap_trueframelabels')
     
     row = layout.row(align=True)
     row.alignment = 'LEFT'
@@ -531,12 +521,6 @@ def register():
                     name="TT Curve",
                     options={'ANIMATABLE'},
                     default=0.0)
-    bpy.types.Scene.timeremap_trueframelabels = bpy.props.BoolProperty(
-                    name="Frame labels",
-                    description="Include true frames in filenames"
-                                " (Ex: '23.42_0025.png')  "
-                                "Enabling this precludes the use of Playback",
-                    default=False)
     bpy.types.Scene.timeremap_method = bpy.props.EnumProperty(
                     name="",
                     description="Method for defining the time remapping",
@@ -570,7 +554,6 @@ def unregister():
     
     del bpy.types.Scene.timeremap_speedfactor
     del bpy.types.Scene.timeremap_TTC
-    del bpy.types.Scene.timeremap_trueframelabels
     del bpy.types.Scene.timeremap_method
     del bpy.types.Scene.timeremap_immuneObject1
     del bpy.types.Scene.timeremap_immuneObject2
