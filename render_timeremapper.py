@@ -307,7 +307,7 @@ def is_keyframed(scene_or_obj, data_path, index=0):
 
 
 def using_immune_objects(context):
-    '''Check if the user has an valid immune objects set, i.e. objects
+    '''Check if the user has a valid immune object set, i.e. an object
     that will be immune to time remapping.'''
     scene = context.scene
     
@@ -515,7 +515,7 @@ def update_TR_method(self, context):
     fcurve = scene.animation_data.action.fcurves.new('timeremap_TTC')
     #keyframe it to make a 45 degree straight line
     fcurve.extrapolation = 'LINEAR'
-    fcurve.keyframe_points.inser0t(frame=0.0, value=0.0)
+    fcurve.keyframe_points.insert(frame=0.0, value=0.0)
     fcurve.keyframe_points.insert(frame=1.0, value=1.0)
           
 
