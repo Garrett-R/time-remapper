@@ -1,3 +1,5 @@
+_Note: This repo is no longer maintained, please use https://github.com/hxxr/time-remapper instead_
+
 time-remapper
 =============
 
